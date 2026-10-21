@@ -181,6 +181,10 @@ type Config struct {
 	// OAuthExcludedModels defines per-provider global model exclusions applied to OAuth/file-backed auth entries.
 	OAuthExcludedModels map[string][]string `yaml:"oauth-excluded-models,omitempty" json:"oauth-excluded-models,omitempty"`
 
+	// OAuthProviderPrefixes sets a model prefix per OAuth provider (e.g. codex: cx), applied to
+	// file-backed accounts that carry no prefix of their own. Absent providers get no prefix.
+	OAuthProviderPrefixes map[string]string `yaml:"oauth-provider-prefixes,omitempty" json:"oauth-provider-prefixes,omitempty"`
+
 	// OAuthModelAlias defines global model name aliases for OAuth/file-backed auth channels.
 	// These aliases affect both model listing and model routing for supported channels:
 	// vertex, aistudio, antigravity, claude, codex, kimi, xai, meta.

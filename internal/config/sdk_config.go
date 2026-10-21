@@ -93,6 +93,9 @@ type SDKConfig struct {
 	// APIKeys is a list of keys for authenticating clients to this proxy server.
 	APIKeys []string `yaml:"api-keys" json:"api-keys"`
 
+	// APIKeyPolicies limits individual client API keys. Keys without an entry are unrestricted.
+	APIKeyPolicies map[string]KeyPolicy `yaml:"api-key-policies,omitempty" json:"api-key-policies,omitempty"`
+
 	// PassthroughHeaders controls whether upstream response headers are forwarded to downstream clients.
 	// Default is false (disabled).
 	PassthroughHeaders bool `yaml:"passthrough-headers" json:"passthrough-headers"`
@@ -364,4 +367,18 @@ type StreamingConfig struct {
 	// SendKeepAliveBeforeFT controls whether SSE heartbeats are sent before the first token arrives
 	// when KeepAliveSeconds > 0. Default is false.
 	SendKeepAliveBeforeFT bool `yaml:"send-keepalive-before-ft,omitempty" json:"send-keepalive-before-ft,omitempty"`
+}
+
+// KeyPolicy restricts one client API key.
+type KeyPolicy struct {
+	// Name is a human-readable label shown in the panel; it does not restrict anything.
+	Name string `yaml:"name,omitempty" json:"name,omitempty"`
+	// Models lists allowed model patterns ('*' matches any substring). Empty allows every model.
+	Models []string `yaml:"models,omitempty" json:"models,omitempty"`
+	// TotalTokens caps tokens spent over the key's lifetime. 0 means unlimited.
+	TotalTokens int64 `yaml:"total-tokens,omitempty" json:"total-tokens,omitempty"`
+	// DailyTokens caps tokens spent per UTC day. 0 means unlimited.
+	DailyTokens int64 `yaml:"daily-tokens,omitempty" json:"daily-tokens,omitempty"`
+	// ExpiresAt is an RFC3339 time after which the key is rejected. Empty means never.
+	ExpiresAt string `yaml:"expires-at,omitempty" json:"expires-at,omitempty"`
 }

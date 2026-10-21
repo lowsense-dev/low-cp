@@ -154,6 +154,9 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 				if pref, ok := metadata["prefix"].(string); ok && auth.Prefix == "" {
 					auth.Prefix = strings.Trim(strings.TrimSpace(pref), "/")
 				}
+				if auth.Prefix == "" {
+					auth.Prefix = providerPrefix(ctx.Config, auth.Provider)
+				}
 				if errWeight := coreauth.ApplyAuthWeightMetadata(auth, metadata); errWeight != nil {
 					return nil, fmt.Errorf("invalid plugin auth weight in %s: %w", filepath.Base(fullPath), errWeight)
 				}
@@ -202,6 +205,9 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 		if trimmed != "" && !strings.Contains(trimmed, "/") {
 			prefix = trimmed
 		}
+	}
+	if prefix == "" {
+		prefix = providerPrefix(ctx.Config, provider)
 	}
 
 	disabled, _ := metadata["disabled"].(bool)
@@ -450,4 +456,16 @@ func ExtractExcludedModelsFromMetadata(metadata map[string]any) ([]string, error
 		}
 	}
 	return result, errInvalid
+}
+
+// providerPrefix returns the configured oauth.provider-prefixes entry for a provider.
+func providerPrefix(cfg *config.Config, provider string) string {
+	if cfg == nil {
+		return ""
+	}
+	prefix := strings.Trim(strings.TrimSpace(cfg.OAuthProviderPrefixes[strings.ToLower(strings.TrimSpace(provider))]), "/")
+	if strings.Contains(prefix, "/") {
+		return ""
+	}
+	return prefix
 }

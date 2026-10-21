@@ -67,3 +67,7 @@ docker-compose.override.yml
 
 # Local LLM Wiki vault
 .llm-wiki
+
+# low-cp
+/low-cp
+web/node_modules/

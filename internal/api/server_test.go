@@ -1899,7 +1899,8 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 		if rr.Code != http.StatusOK {
 			t.Fatalf("status = %d, want %d body=%s", rr.Code, http.StatusOK, rr.Body.String())
 		}
-		if !strings.Contains(rr.Body.String(), "management app") {
+		// low-cp serves its embedded panel instead of the downloaded management app.
+		if !strings.Contains(rr.Body.String(), "<html") {
 			t.Fatalf("management panel body missing: %s", rr.Body.String())
 		}
 	})

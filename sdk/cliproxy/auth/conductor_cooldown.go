@@ -161,6 +161,7 @@ func (m *Manager) setConfigSnapshotLocked(cfg *internalconfig.Config) bool {
 		m.homeSessionAliases.clear()
 	}
 	m.runtimeConfig.Store(cfg)
+	setNoRotateStatuses(cfg.Routing)
 	clearedCooldowns := m.clearDisabledCooldownStates(cfg)
 	if clearedCooldowns && oldCooldownStore != nil {
 		m.mu.Lock()
@@ -2624,6 +2625,34 @@ func isMissingModelPhrase(value string) bool {
 // isRequestInvalidError returns true if the error represents a client request
 // error that should neither rotate nor penalize credentials. Model-support
 // errors remain eligible for alternate routing and keep their model-level state.
+// noRotateStatuses holds the constant-error statuses (map[int]struct{}) of the
+// while-no-limit strategy. Other strategies keep the upstream classification.
+// shortcut: process-global, fine for one Manager per process; move onto Manager if several run.
+var noRotateStatuses atomic.Value
+
+var defaultNoRotateStatuses = []int{http.StatusBadRequest, http.StatusNotFound, http.StatusRequestEntityTooLarge, http.StatusUnprocessableEntity}
+
+func setNoRotateStatuses(routing internalconfig.RoutingConfig) {
+	set := make(map[int]struct{})
+	switch strings.ToLower(strings.TrimSpace(routing.Strategy)) {
+	case "while-no-limit", "whilenolimit", "sticky":
+		statuses := routing.NoRotateStatuses
+		if statuses == nil {
+			statuses = defaultNoRotateStatuses
+		}
+		for _, status := range statuses {
+			set[status] = struct{}{}
+		}
+	}
+	noRotateStatuses.Store(set)
+}
+
+func isNoRotateStatus(status int) bool {
+	set, _ := noRotateStatuses.Load().(map[int]struct{})
+	_, ok := set[status]
+	return ok
+}
+
 func isRequestInvalidError(err error) bool {
 	if err == nil {
 		return false
@@ -2641,6 +2670,9 @@ func isRequestInvalidError(err error) bool {
 		return false
 	}
 	status := statusCodeFromError(err)
+	if isNoRotateStatus(status) {
+		return true
+	}
 	if clienterror.IsRequestFault(status, err) {
 		return true
 	}

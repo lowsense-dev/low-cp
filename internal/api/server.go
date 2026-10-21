@@ -9,6 +9,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/keyusage"
 	"net"
 	"net/http"
 	"os"
@@ -211,6 +212,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	}
 	githubauth.SetToken(cfg.GitHubToken)
 	managementasset.SetCurrentConfig(cfg)
+	keyusage.Init(configFilePath)
 	auth.SetQuotaCooldownDisabled(cfg.DisableCooling)
 	auth.SetTransientErrorCooldownSeconds(cfg.TransientErrorCooldownSeconds)
 	applySignatureCacheConfig(nil, cfg)
@@ -414,6 +416,11 @@ func (s *Server) Start() error {
 //   - error: An error if the server fails to stop
 func (s *Server) Stop(ctx context.Context) error {
 	log.Debug("Stopping API server...")
+	if store := keyusage.Default(); store != nil {
+		if errFlush := store.Flush(); errFlush != nil {
+			log.WithError(errFlush).Warn("failed to flush key usage")
+		}
+	}
 
 	if s.keepAliveEnabled {
 		select {

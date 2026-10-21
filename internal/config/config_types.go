@@ -416,8 +416,19 @@ type QuotaExceeded struct {
 // RoutingConfig configures how credentials are selected for requests.
 type RoutingConfig struct {
 	// Strategy selects the credential selection strategy.
-	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first".
+	// Supported values: "round-robin" (default), "weighted-round-robin", "fill-first",
+	// "while-no-limit" (stay on one credential until it fails, then stay on the next).
 	Strategy string `yaml:"strategy,omitempty" json:"strategy,omitempty"`
+
+	// NoRotateStatuses lists upstream HTTP statuses the while-no-limit strategy treats as
+	// constant request errors: returned to the client without trying another credential or
+	// cooling down. Credential-specific failures (invalid_grant, model not supported by the
+	// account) still rotate. nil means [400, 404, 413, 422]; an empty list disables it.
+	NoRotateStatuses []int `yaml:"no-rotate-statuses,omitempty" json:"no-rotate-statuses,omitempty"`
+
+	// DisabledModels hides models from every client key ('*' wildcard): they are
+	// filtered from model listings and requests for them are rejected.
+	DisabledModels []string `yaml:"disabled-models,omitempty" json:"disabled-models,omitempty"`
 
 	// SessionAffinity enables universal session-sticky routing for all clients.
 	// Explicit Claude Code, Codex, OpenCode, and pi session headers are preferred,

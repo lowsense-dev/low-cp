@@ -820,6 +820,37 @@ func (s *FillFirstSelector) Pick(ctx context.Context, provider, model string, op
 	return available[0], nil
 }
 
+// StickySelector keeps routing to the credential it picked last until that credential
+// is excluded or unavailable, then moves to the next one and stays there ("while-no-limit").
+type StickySelector struct {
+	mu      sync.Mutex
+	current map[string]string
+}
+
+// Pick returns the sticky credential for the provider/model, advancing only on failure.
+func (s *StickySelector) Pick(ctx context.Context, provider, model string, opts cliproxyexecutor.Options, auths []*Auth) (*Auth, error) {
+	_ = opts
+	available, err := getSelectorAvailableAuths(ctx, auths, provider, model, time.Now())
+	if err != nil {
+		return nil, err
+	}
+	key := provider + ":" + canonicalModelKey(model)
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.current == nil {
+		s.current = make(map[string]string)
+	}
+	last := s.current[key]
+	for _, auth := range available {
+		if auth.ID == last {
+			return auth, nil
+		}
+	}
+	picked := available[successorIndex(available, last)]
+	s.current[key] = picked.ID
+	return picked, nil
+}
+
 func isAuthBlockedForModel(auth *Auth, model string, now time.Time) (bool, blockReason, time.Time) {
 	if auth == nil {
 		return true, blockReasonOther, time.Time{}

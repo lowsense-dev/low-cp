@@ -1,0 +1,53 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux-amd64:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: web/pnpm-lock.yaml
+      # The panel is embedded into the binary from internal/panel/dist.
+      - name: Build panel
+        working-directory: web
+        run: pnpm install --frozen-lockfile && pnpm build
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Build binary
+        env:
+          CGO_ENABLED: "0"
+          GOOS: linux
+          GOARCH: amd64
+        run: |
+          go build -trimpath -ldflags "-s -w -X main.Version=${GITHUB_REF_NAME}-${GITHUB_SHA::7}" -o dist/low-cp-linux-amd64 ./cmd/server
+          sha256sum dist/low-cp-linux-amd64 > dist/low-cp-linux-amd64.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: low-cp-linux-amd64
+          path: dist/
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
