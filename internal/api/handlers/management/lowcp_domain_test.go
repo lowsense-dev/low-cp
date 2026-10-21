@@ -52,7 +52,7 @@ func TestSwapCaddySnippetRestoresOnReloadFailure(t *testing.T) {
 }
 
 func TestDomainPattern(t *testing.T) {
-	for _, ok := range []string{"llm-api.catty.su", "a.b.co", "xn--80a.xn--p1ai"} {
+	for _, ok := range []string{"llm-api.example.com", "a.b.co", "xn--80a.xn--p1ai"} {
 		if !domainPattern.MatchString(ok) {
 			t.Fatalf("%q should be valid", ok)
 		}
