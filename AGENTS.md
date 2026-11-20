@@ -30,6 +30,7 @@ go build -o test-output ./cmd/server && rm test-output # Verify compile (REQUIRE
 - `internal/runtime/executor/` — Per-provider runtime executors (incl. Codex WebSocket)
 - `internal/translator/` — Provider protocol translators (and shared `common`)
 - `internal/registry/` — Model registry + remote updater (`StartModelsUpdater`); `--local-model` disables remote updates
+- `internal/upstreammodels/` — Provider `/models` discovery shared by the panel and model registration; empty API-key provider model lists use it by default
 - `internal/store/` — Storage implementations and secret resolution
 - `internal/managementasset/` — Config snapshots and management assets
 - `internal/cache/` — Request signature caching

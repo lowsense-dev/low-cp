@@ -94,6 +94,8 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 		if entry := resolveConfigGeminiKeyForConfig(cfg, a); entry != nil {
 			if len(entry.Models) > 0 {
 				models = buildGeminiConfigModels(entry)
+			} else {
+				models = s.upstreamModelsOrFallback(ctx, "gemini", a, models, "google", "gemini", "gemini")
 			}
 			if authKind == "apikey" {
 				excluded = entry.ExcludedModels
@@ -105,6 +107,8 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 		if entry := resolveConfigInteractionsKeyForConfig(cfg, a); entry != nil {
 			if len(entry.Models) > 0 {
 				models = buildGeminiConfigModels(entry)
+			} else {
+				models = s.upstreamModelsOrFallback(ctx, "interactions", a, models, "google", "gemini", "gemini")
 			}
 			if authKind == "apikey" {
 				excluded = entry.ExcludedModels
@@ -150,6 +154,8 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 		if entry := resolveConfigClaudeKeyForConfig(cfg, a); entry != nil {
 			if len(entry.Models) > 0 {
 				models = buildClaudeConfigModels(entry)
+			} else {
+				models = s.upstreamModelsOrFallback(ctx, "claude", a, models, "anthropic", "claude", "claude")
 			}
 			if authKind == "apikey" {
 				excluded = entry.ExcludedModels
@@ -160,6 +166,9 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 		if authKind == "apikey" {
 			if entry := resolveConfigCodexKeyForConfig(cfg, a); entry != nil {
 				models = buildCodexConfigModels(entry)
+				if len(entry.Models) == 0 {
+					models = s.upstreamModelsOrFallback(ctx, "codex", a, models, "openai", "openai", "codex")
+				}
 				excluded = entry.ExcludedModels
 			}
 			models = applyExcludedModels(models, excluded)
@@ -191,6 +200,8 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 		if entry := resolveConfigXAIKeyForConfig(cfg, a); entry != nil {
 			if len(entry.Models) > 0 {
 				models = buildXAIConfigModels(entry)
+			} else {
+				models = s.upstreamModelsOrFallback(ctx, "xai", a, models, "xai", "xai", "xai")
 			}
 			if authKind == "apikey" {
 				excluded = entry.ExcludedModels
@@ -259,6 +270,9 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 				if providerKey == "" {
 					providerKey = "openai-compatibility"
 				}
+				if len(compat.Models) == 0 && len(s.pluginModelsForProvider(providerKey)) == 0 {
+					ms = s.upstreamOpenAICompatibilityModels(ctx, a, compat.Name)
+				}
 				if len(ms) > 0 {
 					ms = s.appendPluginModels(providerKey, ms, nil)
 					published = s.registerResolvedModelsForAuthFenced(a, fence, providerKey, applyModelPrefixes(ms, a.Prefix, cfg.ForceModelPrefix))
@@ -282,6 +296,9 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 						providerKey = "openai-compatibility"
 					}
 					ms := cached.models
+					if cached.discover && len(s.pluginModelsForProvider(providerKey)) == 0 {
+						ms = s.upstreamOpenAICompatibilityModels(ctx, a, compatDisplayName)
+					}
 					if len(ms) > 0 {
 						ms = s.appendPluginModels(providerKey, ms, nil)
 						published = s.registerResolvedModelsForAuthFenced(a, fence, providerKey, applyModelPrefixes(ms, a.Prefix, cfg.ForceModelPrefix))
