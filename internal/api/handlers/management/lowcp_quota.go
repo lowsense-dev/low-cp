@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/tidwall/gjson"
 )
 
 // quotaWindow is one usage limit normalised across providers.
@@ -125,19 +125,19 @@ func buildQuotaRequest(ctx context.Context, provider string, auth *coreauth.Auth
 }
 
 func parseQuota(provider string, data []byte) quotaReport {
-	root := gjson.ParseBytes(data)
+	root := ojson.ParseBytes(data)
 	report := quotaReport{Provider: provider, Windows: []quotaWindow{}}
 	switch provider {
 	case "codex":
 		report.Plan = root.Get("plan_type").String()
 		addCodexWindows(&report, "", root.Get("rate_limit"))
-		root.Get("additional_rate_limits").ForEach(func(_, extra gjson.Result) bool {
+		root.Get("additional_rate_limits").ForEach(func(_, extra ojson.Result) bool {
 			addCodexWindows(&report, extra.Get("limit_name").String()+" ", extra.Get("rate_limit"))
 			return true
 		})
 	case "claude":
 		labels := map[string]string{"five_hour": "5h", "seven_day": "7d", "seven_day_opus": "7d Opus", "seven_day_sonnet": "7d Sonnet", "seven_day_oauth_apps": "7d OAuth apps"}
-		root.ForEach(func(key, value gjson.Result) bool {
+		root.ForEach(func(key, value ojson.Result) bool {
 			if !value.IsObject() || !value.Get("utilization").Exists() {
 				return true
 			}
@@ -152,7 +152,7 @@ func parseQuota(provider string, data []byte) quotaReport {
 		// Models without a displayName are internal (e.g. chat_23310); several IDs can
 		// share one display name, so keep the most used entry per name.
 		seen := map[string]int{}
-		root.Get("models").ForEach(func(_, value gjson.Result) bool {
+		root.Get("models").ForEach(func(_, value ojson.Result) bool {
 			info := value.Get("quotaInfo")
 			label := value.Get("displayName").String()
 			if !info.Exists() || label == "" {
@@ -178,7 +178,7 @@ func parseQuota(provider string, data []byte) quotaReport {
 	return report
 }
 
-func addCodexWindows(report *quotaReport, prefix string, rateLimit gjson.Result) {
+func addCodexWindows(report *quotaReport, prefix string, rateLimit ojson.Result) {
 	for _, name := range []string{"primary_window", "secondary_window"} {
 		window := rateLimit.Get(name)
 		if !window.IsObject() || !window.Get("used_percent").Exists() {

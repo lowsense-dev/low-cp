@@ -12,9 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/tidwall/gjson"
 )
 
 // modelGroup is one model source: an OAuth provider, a named OpenAI-compatible
@@ -230,10 +230,10 @@ func parseUpstreamModels(data []byte) []string {
 			out = append(out, id)
 		}
 	}
-	root := gjson.ParseBytes(data)
+	root := ojson.ParseBytes(data)
 	for _, field := range []string{"data", "models"} {
-		root.Get(field).ForEach(func(_, item gjson.Result) bool {
-			if item.Type == gjson.String {
+		root.Get(field).ForEach(func(_, item ojson.Result) bool {
+			if item.Type == ojson.String {
 				add(item.String())
 			} else {
 				add(firstNonEmpty(item.Get("id").String(), item.Get("name").String()))
@@ -242,7 +242,7 @@ func parseUpstreamModels(data []byte) []string {
 		})
 	}
 	if len(out) == 0 && json.Valid(data) && root.IsArray() {
-		root.ForEach(func(_, item gjson.Result) bool { add(item.Get("id").String()); return true })
+		root.ForEach(func(_, item ojson.Result) bool { add(item.Get("id").String()); return true })
 	}
 	sort.Strings(out)
 	return out

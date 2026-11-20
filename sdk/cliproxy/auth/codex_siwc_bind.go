@@ -3,13 +3,13 @@ package auth
 import (
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/MoeForge/moego/json"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -127,16 +127,22 @@ func (m *Manager) BindCodexSIWC(ctx context.Context, id string, expectedEpoch ui
 		}
 		now := time.Now()
 		if !updated.Disabled {
-			updated.RejectedAccessToken = ""
-			if hasUnauthorizedAuthFailure(current) || (updated.LastError != nil && isUnauthorizedError(updated.LastError)) {
-				updated.Unavailable = false
-				updated.LastError = nil
-				updated.StatusMessage = ""
-				updated.Status = StatusActive
-				updated.NextRetryAfter = time.Time{}
-				cooldownChanged = true
+			applyPreservedRejectedTokens(current, updated, false)
+			if updated.RejectedAccessToken == "" || authAccessToken(updated) != updated.RejectedAccessToken {
+				updated.RefreshFailures = 0
+				updated.NextRefreshAfter = time.Time{}
+				if hasUnauthorizedAuthFailure(current) ||
+					(updated.LastError != nil && (isUnauthorizedError(updated.LastError) || isInvalidGrantResultError(updated.LastError))) ||
+					(updated.Unavailable && !updated.NextRetryAfter.After(now) && !updated.Quota.NextRecoverAt.After(now)) {
+					updated.Unavailable = false
+					updated.LastError = nil
+					updated.StatusMessage = ""
+					updated.Status = StatusActive
+					updated.NextRetryAfter = time.Time{}
+					cooldownChanged = true
+				}
+				clearUnauthorizedModelStates(updated, now)
 			}
-			clearUnauthorizedModelStates(updated, now)
 			// The helper can clear errors while preserving a model quota block.
 			if len(updated.ModelStates) > 0 {
 				cooldownChanged = true

@@ -10,12 +10,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MoeForge/moego/ojson"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/keyusage"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	"github.com/tidwall/gjson"
 )
 
 // keyPolicyMiddleware enforces routing.disabled-models for everyone and
@@ -161,7 +161,7 @@ func requestedModel(c *gin.Context) (string, bool) {
 		return "", false
 	}
 	c.Request.Body = io.NopCloser(bytes.NewReader(body))
-	model := gjson.GetBytes(body, "model").String()
+	model := ojson.GetBytes(body, "model").String()
 	return normalizeRequestedModel(model), model != ""
 }
 

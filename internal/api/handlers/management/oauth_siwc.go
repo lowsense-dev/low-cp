@@ -2,7 +2,6 @@ package management
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -13,12 +12,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MoeForge/moego/json"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	"github.com/router-for-me/CLIProxyAPI/v8/sdk/proxyutil"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -135,6 +136,86 @@ func resolveSIWCBindFile(authDir, path string) (string, map[string]any, error) {
 	return realPath, metadata, nil
 }
 
+func resolveSIWCBindProxyURL(target *coreauth.Auth, diskMetadata map[string]any) (string, error) {
+	if raw, exists := diskMetadata["proxy_url"]; exists && raw != nil {
+		str, ok := raw.(string)
+		if !ok {
+			return "", errors.New("invalid proxy_url")
+		}
+		trimmed := strings.TrimSpace(str)
+		if trimmed != "" {
+			if _, _, errBuild := proxyutil.BuildHTTPTransport(trimmed); errBuild != nil {
+				return "", errBuild
+			}
+		}
+		return trimmed, nil
+	}
+	if target != nil {
+		trimmed := strings.TrimSpace(target.ProxyURL)
+		if trimmed != "" {
+			if _, _, errBuild := proxyutil.BuildHTTPTransport(trimmed); errBuild != nil {
+				return "", errBuild
+			}
+		}
+		return trimmed, nil
+	}
+	return "", nil
+}
+
+// GetSIWCStatus returns the read-only local SIWC status ("off", "valid", or "invalid")
+// for a Codex credential without triggering any upstream refresh or verification request.
+func (h *Handler) GetSIWCStatus(c *gin.Context) {
+	if h == nil {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "handler unavailable"})
+		return
+	}
+	name := strings.TrimSpace(c.Query("name"))
+	if name == "" {
+		name = strings.TrimSpace(c.Query("id"))
+	}
+	authIndex := strings.TrimSpace(c.Query("auth_index"))
+	if authIndex == "" {
+		authIndex = strings.TrimSpace(c.Query("authIndex"))
+	}
+	if name == "" && authIndex == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name or auth_index is required"})
+		return
+	}
+	h.mu.Lock()
+	cfg, manager := h.cfg, h.authManager
+	h.mu.Unlock()
+	if manager == nil && (cfg == nil || strings.TrimSpace(cfg.AuthDir) == "") {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "auth manager unavailable"})
+		return
+	}
+	var target *coreauth.Auth
+	if manager != nil {
+		if name != "" {
+			target, _ = h.lookupAuthFile(name, authIndex)
+		} else {
+			target = h.authByIndex(authIndex)
+		}
+	} else if name != "" && authIndex == "" && !isUnsafeAuthFileName(name) && strings.HasSuffix(strings.ToLower(name), ".json") {
+		full := filepath.Join(cfg.AuthDir, name)
+		if data, errRead := os.ReadFile(full); errRead == nil {
+			var metadata map[string]any
+			if json.Unmarshal(data, &metadata) == nil && metadata != nil {
+				provider, _ := metadata["type"].(string)
+				target = &coreauth.Auth{ID: name, FileName: name, Provider: strings.TrimSpace(provider), Metadata: metadata}
+			}
+		}
+	}
+	if target == nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "auth file not found"})
+		return
+	}
+	if !coreauth.IsCodexAuthRecord(target) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "SIWC status requires a Codex credential"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"status": string(target.CodexSIWCStatus(time.Now()))})
+}
+
 // StartSIWCBind creates a v8-only OAuth session for an existing Codex credential.
 // Remote browsers complete it by submitting the full loopback callback URL; no
 // listener on the server's port 1455 is required or started by this endpoint.
@@ -200,9 +281,14 @@ func (h *Handler) StartSIWCBind(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to initialize SIWC authorization"})
 		return
 	}
-	var service siwcOAuthService = codex.NewCodexAuth(cfg)
+	accountProxyURL, errProxy := resolveSIWCBindProxyURL(target, metadata)
+	if errProxy != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "SIWC binding target has invalid proxy_url"})
+		return
+	}
+	var service siwcOAuthService = codex.NewCodexAuthWithProxyURL(cfg, accountProxyURL)
 	if factory != nil {
-		service = factory(cfg)
+		service = factory(cfg, accountProxyURL)
 	}
 	authURL, errURL := service.GenerateSIWCAuthURL(state, nonce, deviceID, codex.SIWCRedirectURI, pkce)
 	if errURL != nil {

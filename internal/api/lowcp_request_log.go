@@ -36,16 +36,28 @@ func (w *errorCaptureWriter) capture(data []byte) {
 	}
 }
 
+// requestModelContextKey carries the model parsed after authentication for the
+// request log; the log itself must not touch the body before auth.
+const requestModelContextKey = "lowcpRequestModel"
+
+// requestModelMiddleware parses the requested model after authentication so the
+// body is only read once the request is authorized.
+func requestModelMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if model, found := requestedModel(c); found {
+			c.Set(requestModelContextKey, model)
+		}
+		c.Next()
+	}
+}
+
 // requestLogMiddleware records every client request in the in-memory request log.
-// It runs first in the chain so it also sees requests rejected by authentication.
+// It runs first in the chain so it also sees requests rejected by authentication,
+// and it never reads the request body.
 func requestLogMiddleware() gin.HandlerFunc {
 	log := requestlog.Default()
 	return func(c *gin.Context) {
 		start := time.Now()
-		model := ""
-		if c.Request.Method == http.MethodPost && c.ContentType() == "application/json" {
-			model, _ = requestedModel(c)
-		}
 		writer := &errorCaptureWriter{ResponseWriter: c.Writer}
 		c.Writer = writer
 		c.Next()
@@ -57,6 +69,8 @@ func requestLogMiddleware() gin.HandlerFunc {
 		}
 		key, _ := c.Get("userApiKey")
 		keyString, _ := key.(string)
+		model, _ := c.Get(requestModelContextKey)
+		modelString, _ := model.(string)
 		entry := requestlog.Entry{
 			ID:         id,
 			Time:       start,
@@ -66,7 +80,7 @@ func requestLogMiddleware() gin.HandlerFunc {
 			Path:       c.Request.URL.Path,
 			Status:     writer.Status(),
 			DurationMs: time.Since(start).Milliseconds(),
-			Model:      model,
+			Model:      modelString,
 		}
 		if entry.Status >= http.StatusBadRequest {
 			entry.Error = writer.head.String()

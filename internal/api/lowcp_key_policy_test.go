@@ -204,7 +204,7 @@ func TestRequestLogMiddleware(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()
 	engine.Use(func(c *gin.Context) { logging.SetGinRequestID(c, "req-"+c.GetHeader("X-Test-Id")) })
-	engine.Use(requestLogMiddleware(), func(c *gin.Context) { c.Set("userApiKey", "k1") })
+	engine.Use(requestLogMiddleware(), func(c *gin.Context) { c.Set("userApiKey", "k1") }, requestModelMiddleware())
 	engine.POST("/v1/chat/completions", func(c *gin.Context) {
 		c.JSON(http.StatusTooManyRequests, gin.H{"error": "slow down"})
 	})
