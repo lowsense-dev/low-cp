@@ -29,8 +29,8 @@ func TestKimiK28ClaudeMessagesMaxPreservesMax(t *testing.T) {
 	}
 }
 
-// Reproduces Claude Code -> Kimi /v1/messages with effort=max on K2.5 (clamps to high).
-func TestKimiClaudeMessagesMaxClampsToHigh(t *testing.T) {
+// Kimi requests retain the client's effort even when the catalog does not list it.
+func TestKimiClaudeMessagesPreservesMax(t *testing.T) {
 	models := registry.GetKimiModels()
 	reg := registry.GetGlobalRegistry()
 	clientID := "test-kimi-max-clamp"
@@ -45,7 +45,7 @@ func TestKimiClaudeMessagesMaxClampsToHigh(t *testing.T) {
 	if got := ojson.GetBytes(out, "thinking.type").String(); got != "adaptive" {
 		t.Fatalf("thinking.type = %q, want adaptive", got)
 	}
-	if got := ojson.GetBytes(out, "output_config.effort").String(); got != "high" {
-		t.Fatalf("output_config.effort = %q, want high", got)
+	if got := ojson.GetBytes(out, "output_config.effort").String(); got != "max" {
+		t.Fatalf("output_config.effort = %q, want max", got)
 	}
 }

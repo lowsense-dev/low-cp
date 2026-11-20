@@ -19,11 +19,11 @@ func TestApplyThinkingWithModelInfoMapsCrossFamilyHighIntent(t *testing.T) {
 		want      string
 	}{
 		{name: "xhigh stays xhigh", source: "xhigh", supported: []string{"high", "max", "xhigh"}, want: "xhigh"},
-		{name: "xhigh prefers max", source: "xhigh", supported: []string{"high", "max"}, want: "max"},
-		{name: "xhigh falls back to high", source: "xhigh", supported: []string{"high"}, want: "high"},
+		{name: "xhigh with max capability", source: "xhigh", supported: []string{"high", "max"}, want: "xhigh"},
+		{name: "xhigh with high capability", source: "xhigh", supported: []string{"high"}, want: "xhigh"},
 		{name: "max stays max", source: "max", supported: []string{"high", "xhigh", "max"}, want: "max"},
-		{name: "max prefers xhigh", source: "max", supported: []string{"high", "xhigh"}, want: "xhigh"},
-		{name: "max falls back to high", source: "max", supported: []string{"high"}, want: "high"},
+		{name: "max with xhigh capability", source: "max", supported: []string{"high", "xhigh"}, want: "max"},
+		{name: "max with high capability", source: "max", supported: []string{"high"}, want: "max"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -57,8 +57,8 @@ func TestApplyThinkingWithModelInfoMapsOpenAICompatibilityHighIntent(t *testing.
 	if err != nil {
 		t.Fatalf("ApplyThinkingWithModelInfo() error = %v", err)
 	}
-	if got := ojson.GetBytes(out, "reasoning_effort").String(); got != "max" {
-		t.Fatalf("reasoning_effort = %q, want max; body=%s", got, out)
+	if got := ojson.GetBytes(out, "reasoning_effort").String(); got != "xhigh" {
+		t.Fatalf("reasoning_effort = %q, want xhigh; body=%s", got, out)
 	}
 }
 
@@ -74,12 +74,12 @@ func TestApplyThinkingWithModelInfoMapsResponsesToCodexHighIntent(t *testing.T) 
 	if err != nil {
 		t.Fatalf("ApplyThinkingWithModelInfo() error = %v", err)
 	}
-	if got := ojson.GetBytes(out, "reasoning.effort").String(); got != "xhigh" {
-		t.Fatalf("reasoning.effort = %q, want xhigh; body=%s", got, out)
+	if got := ojson.GetBytes(out, "reasoning.effort").String(); got != "max" {
+		t.Fatalf("reasoning.effort = %q, want max; body=%s", got, out)
 	}
 }
 
-func TestApplyThinkingWithModelInfoKeepsSameFamilyValidationStrict(t *testing.T) {
+func TestApplyThinkingWithModelInfoPassesUnlistedEffort(t *testing.T) {
 	modelInfo := &registry.ModelInfo{
 		ID:       "openai-upstream",
 		Type:     "openai",
@@ -87,8 +87,8 @@ func TestApplyThinkingWithModelInfoKeepsSameFamilyValidationStrict(t *testing.T)
 	}
 	body := []byte(`{"reasoning_effort":"xhigh"}`)
 	out, err := thinking.ApplyThinkingWithModelInfo(body, body, "openai-upstream", "openai", "openai", "openai", modelInfo)
-	if err == nil {
-		t.Fatalf("ApplyThinkingWithModelInfo() error = nil, want unsupported xhigh error; body=%s", out)
+	if err != nil || ojson.GetBytes(out, "reasoning_effort").String() != "xhigh" {
+		t.Fatalf("ApplyThinkingWithModelInfo() output = %s, error = %v; want xhigh", out, err)
 	}
 }
 
@@ -435,7 +435,7 @@ func TestApplyThinkingWithModelInfoUsesOriginalResponsesEffort(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ApplyThinkingWithModelInfo() error = %v", err)
 	}
-	if got := ojson.GetBytes(out, "output_config.effort").String(); got != "max" {
-		t.Fatalf("output effort = %q, want max; body=%s", got, out)
+	if got := ojson.GetBytes(out, "output_config.effort").String(); got != "xhigh" {
+		t.Fatalf("output effort = %q, want xhigh; body=%s", got, out)
 	}
 }

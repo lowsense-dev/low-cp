@@ -288,8 +288,8 @@ func TestExecutorAdapterAppliesModelThinkingMetadataWithoutPluginApplier(t *test
 	if errNoThinking != nil {
 		t.Fatalf("Execute(no-thinking-model) error = %v", errNoThinking)
 	}
-	if ojson.GetBytesNoCopy(gotReq.Payload, "reasoning_effort").Exists() {
-		t.Fatalf("expected reasoning_effort to be stripped for non-thinking model; payload=%s", gotReq.Payload)
+	if got := ojson.GetBytesNoCopy(gotReq.Payload, "reasoning_effort").String(); got != "high" {
+		t.Fatalf("reasoning_effort = %q, want high; payload=%s", got, gotReq.Payload)
 	}
 }
 
@@ -341,7 +341,7 @@ func TestExecutorAdapterValidatesThinkingAndClampsOrRejectsOutOfRange(t *testing
 		t.Fatalf("plugin Execute was called %d times on bogus suffix", executeCalls)
 	}
 
-	// Unsupported level suffix -> rejected with ThinkingError (ErrLevelNotSupported).
+	// Unlisted effort levels are forwarded to the plugin executor.
 	_, errLevel := adapter.Execute(context.Background(), nil, coreexecutor.Request{
 		Model:   "my-model(xhigh)",
 		Format:  sdktranslator.FormatClaude,
@@ -350,12 +350,11 @@ func TestExecutorAdapterValidatesThinkingAndClampsOrRejectsOutOfRange(t *testing
 		SourceFormat:   sdktranslator.FormatClaude,
 		ResponseFormat: sdktranslator.FormatClaude,
 	})
-	thinkingErr = nil
-	if !errors.As(errLevel, &thinkingErr) || thinkingErr.Code != thinking.ErrLevelNotSupported {
-		t.Fatalf("Execute(xhigh) error = %v, want ThinkingError(%s)", errLevel, thinking.ErrLevelNotSupported)
+	if errLevel != nil {
+		t.Fatalf("Execute(xhigh) error = %v", errLevel)
 	}
-	if executeCalls != 0 {
-		t.Fatalf("plugin Execute was called %d times on invalid level", executeCalls)
+	if executeCalls != 1 || ojson.GetBytesNoCopy(gotReq.Payload, "output_config.effort").String() != "xhigh" {
+		t.Fatalf("plugin calls = %d, payload = %s; want xhigh", executeCalls, gotReq.Payload)
 	}
 
 	// Out-of-range budget in request body -> rejected with ThinkingError (ErrBudgetOutOfRange).
@@ -371,7 +370,7 @@ func TestExecutorAdapterValidatesThinkingAndClampsOrRejectsOutOfRange(t *testing
 	if !errors.As(errBudget, &thinkingErr) || thinkingErr.Code != thinking.ErrBudgetOutOfRange {
 		t.Fatalf("Execute(budget 9000 in body) error = %v, want ThinkingError(%s)", errBudget, thinking.ErrBudgetOutOfRange)
 	}
-	if executeCalls != 0 {
+	if executeCalls != 1 {
 		t.Fatalf("plugin Execute was called %d times on out-of-range body budget", executeCalls)
 	}
 

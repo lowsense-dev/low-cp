@@ -3051,7 +3051,7 @@ func TestXAIExecutorExecuteStreamCompactionTriggerUsesCompactEndpoint(t *testing
 	}
 }
 
-func TestXAIExecutorOmitsUnsupportedReasoningEffort(t *testing.T) {
+func TestXAIExecutorPreservesUnlistedReasoningEffort(t *testing.T) {
 	modelRegistry := registry.GetGlobalRegistry()
 	modelRegistry.RegisterClient("xai-non-thinking-test", "xai", []*registry.ModelInfo{{ID: "grok-4", Type: "xai"}})
 	t.Cleanup(func() { modelRegistry.UnregisterClient("xai-non-thinking-test") })
@@ -3089,8 +3089,8 @@ func TestXAIExecutorOmitsUnsupportedReasoningEffort(t *testing.T) {
 		t.Fatalf("Execute() error = %v", err)
 	}
 
-	if ojson.GetBytes(gotBody, "reasoning").Exists() {
-		t.Fatalf("unsupported xAI model must omit reasoning key: %s", string(gotBody))
+	if got := ojson.GetBytes(gotBody, "reasoning.effort").String(); got != "high" {
+		t.Fatalf("reasoning.effort = %q, want high: %s", got, string(gotBody))
 	}
 }
 
@@ -3118,11 +3118,11 @@ func TestXAIExecutorThinkingPayloadOverride(t *testing.T) {
 		},
 		{
 			name: "home disables local thinking support", model: "grok-4.5",
-			metadataKey: "cliproxy.resolved_home_model_info",
+			metadataKey: "cliproxy.resolved_home_model_info", wantEffort: "high",
 		},
 		{
 			name: "API-key disables local thinking support", model: "grok-4.5",
-			metadataKey: "cliproxy.resolved_api_key_model_info",
+			metadataKey: "cliproxy.resolved_api_key_model_info", wantEffort: "high",
 		},
 		{
 			name: "home supplies no thinking levels", model: "grok-4.5",
@@ -3130,10 +3130,10 @@ func TestXAIExecutorThinkingPayloadOverride(t *testing.T) {
 		},
 		{
 			name: "home restricts thinking levels", model: "grok-4.5",
-			metadataKey: "cliproxy.resolved_home_model_info", thinking: &registry.ThinkingSupport{Levels: []string{"low"}}, wantEffort: "low",
+			metadataKey: "cliproxy.resolved_home_model_info", thinking: &registry.ThinkingSupport{Levels: []string{"low"}}, wantEffort: "high",
 		},
 		{name: "local supported fallback", model: "grok-4.5", wantEffort: "high"},
-		{name: "local unsupported fallback", model: "grok-build-0.1"},
+		{name: "local unsupported fallback", model: "grok-build-0.1", wantEffort: "high"},
 		{name: "local unknown fallback", model: remoteModel, wantEffort: "high"},
 		{name: "model suffix", model: "grok-4.5", suffix: "(low)", wantEffort: "low"},
 	}

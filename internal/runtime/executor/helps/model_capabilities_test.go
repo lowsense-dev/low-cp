@@ -337,8 +337,8 @@ func TestApplyRequestThinkingUsesSelectedPrefixedAPIKeyModel(t *testing.T) {
 		if !executor.resolved {
 			t.Fatalf("%s request did not receive selected model capabilities", path)
 		}
-		if got := ojson.GetBytes(payload, "output_config.effort").String(); got != "high" {
-			t.Fatalf("%s output effort = %q, want selected credential capability high; body=%s", path, got, payload)
+		if got := ojson.GetBytes(payload, "output_config.effort").String(); got != "max" {
+			t.Fatalf("%s output effort = %q, want requested max; body=%s", path, got, payload)
 		}
 	}
 
@@ -397,7 +397,7 @@ func TestApplyRequestThinkingReconcilesClaudeOpenAICompatToolCallReasoning(t *te
 		wantReasoning string
 	}{
 		{
-			name:       "unsupported thinking model strips reasoning_effort and removes placeholder",
+			name:       "unsupported thinking model strips budget-derived reasoning and removes placeholder",
 			model:      "deepseek-v4-flash",
 			sourceBody: `{"model":"deepseek-v4-flash","thinking":{"type":"enabled","budget_tokens":1024}}`,
 			translated: toolCallWithPlaceholder,
@@ -411,7 +411,7 @@ func TestApplyRequestThinkingReconcilesClaudeOpenAICompatToolCallReasoning(t *te
 			wantExists: false,
 		},
 		{
-			name:       "model disallowing zero clamps none to active level and injects placeholder",
+			name:       "model disallowing zero preserves none and omits placeholder",
 			model:      "deepseek-v4-flash",
 			sourceBody: `{"model":"deepseek-v4-flash","thinking":{"type":"disabled"}}`,
 			translated: toolCallWithoutReasoning,
@@ -425,8 +425,7 @@ func TestApplyRequestThinkingReconcilesClaudeOpenAICompatToolCallReasoning(t *te
 					ZeroAllowed: false,
 				},
 			},
-			wantExists:    true,
-			wantReasoning: " ",
+			wantExists: false,
 		},
 		{
 			name:       "real reasoning preserved when suffix disables thinking",

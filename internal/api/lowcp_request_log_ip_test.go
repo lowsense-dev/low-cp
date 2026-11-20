@@ -7,9 +7,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/requestlog"
 )
 
-func TestRequestLogClientIPUsesCurrentTrustedProxies(t *testing.T) {
+func TestRequestLogClientIP(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	cfg := &config.Config{}
 	got := ""
@@ -20,36 +22,59 @@ func TestRequestLogClientIPUsesCurrentTrustedProxies(t *testing.T) {
 	})
 	engine.POST("/v1/chat/completions", func(c *gin.Context) { c.Status(http.StatusNoContent) })
 
-	request := func(xff string) {
+	request := func(remoteAddr, xff string) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
-		req.RemoteAddr = "127.0.0.1:43123"
+		req.RemoteAddr = remoteAddr
 		if xff != "" {
 			req.Header.Set("X-Forwarded-For", xff)
 		}
 		engine.ServeHTTP(httptest.NewRecorder(), req)
 	}
 
-	request("203.0.113.5")
-	if got != "127.0.0.1" {
-		t.Fatalf("untrusted loopback peer IP = %q, want 127.0.0.1", got)
-	}
-
-	// A hot-reloaded config takes effect without rebuilding the Gin engine.
-	cfg.TrustedProxies = []string{"127.0.0.1", "::1"}
-	request("203.0.113.5")
+	// Local reverse proxies work without extra configuration.
+	request("127.0.0.1:43123", "203.0.113.5")
 	if got != "203.0.113.5" {
-		t.Fatalf("forwarded client IP = %q, want 203.0.113.5", got)
+		t.Fatalf("loopback-forwarded client IP = %q, want 203.0.113.5", got)
 	}
 
 	// The rightmost untrusted hop wins, so a client cannot prepend a fake address.
-	request("192.0.2.1, 203.0.113.5")
+	request("127.0.0.1:43123", "192.0.2.1, 203.0.113.5")
 	if got != "203.0.113.5" {
 		t.Fatalf("forwarded chain client IP = %q, want 203.0.113.5", got)
 	}
 
-	cfg.TrustedProxies = nil
-	request("203.0.113.5")
-	if got != "127.0.0.1" {
-		t.Fatalf("client IP after disabling trust = %q, want 127.0.0.1", got)
+	// Direct external peers cannot spoof their address.
+	request("198.51.100.20:43123", "203.0.113.5")
+	if got != "198.51.100.20" {
+		t.Fatalf("untrusted peer IP = %q, want 198.51.100.20", got)
 	}
+
+	// Non-loopback proxies follow the latest hot-reloaded configuration.
+	request("192.0.2.10:43123", "203.0.113.5")
+	if got != "192.0.2.10" {
+		t.Fatalf("untrusted proxy peer IP = %q, want 192.0.2.10", got)
+	}
+	cfg.TrustedProxies = []string{"192.0.2.0/24"}
+	request("192.0.2.10:43123", "203.0.113.5")
+	if got != "203.0.113.5" {
+		t.Fatalf("trusted proxy client IP = %q, want 203.0.113.5", got)
+	}
+}
+
+func TestRequestLogRecordsForwardedIP(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	engine := gin.New()
+	engine.Use(func(c *gin.Context) { logging.SetGinRequestID(c, "lowcp-forwarded-ip-test") })
+	engine.Use(requestLogMiddlewareWithConfig(func() *config.Config { return &config.Config{} }))
+	engine.GET("/v1/models", func(c *gin.Context) { c.Status(http.StatusOK) })
+	req := httptest.NewRequest(http.MethodGet, "/v1/models", nil)
+	req.RemoteAddr = "127.0.0.1:1234"
+	req.Header.Set("X-Forwarded-For", "203.0.113.10")
+	engine.ServeHTTP(httptest.NewRecorder(), req)
+	for _, entry := range requestlog.Default().List(requestlog.Query{Search: "203.0.113.10"}) {
+		if entry.ID == "lowcp-forwarded-ip-test" && entry.IP == "203.0.113.10" {
+			return
+		}
+	}
+	t.Fatal("forwarded IP not recorded")
 }

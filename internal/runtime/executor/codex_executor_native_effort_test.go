@@ -15,7 +15,7 @@ import (
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 )
 
-func TestCodexSIWCNormalizesNativeResponsesEffort(t *testing.T) {
+func TestCodexSIWCPreservesNativeResponsesEffort(t *testing.T) {
 	const completed = `{"type":"response.completed","response":{"id":"resp_effort","object":"response","status":"completed","model":"gpt-6.1-sol","output":[],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}`
 	for _, mode := range []string{"http", "stream", "compact", "websocket", "websocket stream preparation"} {
 		for _, tc := range []struct {
@@ -25,14 +25,14 @@ func TestCodexSIWCNormalizesNativeResponsesEffort(t *testing.T) {
 			wantEffort string
 		}{
 			{
-				name:       "baseline none uses minimum effort",
+				name:       "baseline none is preserved",
 				body:       `{"model":"gpt-6.1-sol","reasoning":{"effort":"none","summary":"auto"},"input":[{"role":"user","content":"hi"}]}`,
-				wantEffort: "low",
+				wantEffort: "none",
 			},
 			{
-				name:       "collapsed update cannot restore none",
+				name:       "collapsed update preserves none",
 				body:       `{"model":"gpt-6.1-sol","reasoning":{"effort":"high","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"none"}},{"role":"user","content":"hi"}]}`,
-				wantEffort: "low",
+				wantEffort: "none",
 			},
 			{
 				name:       "user payload override remains final",

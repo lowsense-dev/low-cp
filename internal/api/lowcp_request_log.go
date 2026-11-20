@@ -64,6 +64,8 @@ func requestLogMiddleware() gin.HandlerFunc {
 
 // requestLogMiddlewareWithConfig resolves forwarded addresses against the latest
 // config, unlike Gin's trusted-proxy settings which are fixed at server startup.
+// The informational log always trusts loopback for local reverse proxies; access
+// control continues to use Gin's explicit trusted-proxy configuration.
 func requestLogMiddlewareWithConfig(getConfig func() *config.Config) gin.HandlerFunc {
 	log := requestlog.Default()
 	return func(c *gin.Context) {
@@ -144,6 +146,9 @@ func requestLogRemoteIP(remoteAddr string) string {
 }
 
 func requestLogTrustedProxy(ip netip.Addr, trusted []string) bool {
+	if ip.IsLoopback() {
+		return true
+	}
 	for _, entry := range trusted {
 		entry = strings.TrimSpace(entry)
 		if prefix, err := netip.ParsePrefix(entry); err == nil && prefix.Contains(ip) {

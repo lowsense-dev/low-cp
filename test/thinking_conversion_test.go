@@ -86,17 +86,18 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			expectValue: "medium",
 			expectErr:   false,
 		},
-		// Case 3: Specified xhigh → out of range error
+		// Case 3: Specified xhigh passes through.
 		{
 			name:        "3",
 			from:        "openai",
 			to:          "codex",
 			model:       "level-model(xhigh)",
 			inputJSON:   `{"model":"level-model(xhigh)","messages":[{"role":"user","content":"hi"}]}`,
-			expectField: "",
-			expectErr:   true,
+			expectField: "reasoning.effort",
+			expectValue: "xhigh",
+			expectErr:   false,
 		},
-		// Case 4: Level none → clamped to minimal (ZeroAllowed=false)
+		// Case 4: Level none passes through.
 		{
 			name:        "4",
 			from:        "openai",
@@ -104,10 +105,10 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			model:       "level-model(none)",
 			inputJSON:   `{"model":"level-model(none)","messages":[{"role":"user","content":"hi"}]}`,
 			expectField: "reasoning.effort",
-			expectValue: "minimal",
+			expectValue: "none",
 			expectErr:   false,
 		},
-		// Case 5: Level auto → DynamicAllowed=false → medium (mid-range)
+		// Case 5: Level auto passes through.
 		{
 			name:        "5",
 			from:        "openai",
@@ -115,7 +116,7 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			model:       "level-model(auto)",
 			inputJSON:   `{"model":"level-model(auto)","messages":[{"role":"user","content":"hi"}]}`,
 			expectField: "reasoning.effort",
-			expectValue: "medium",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 		// Case 6: No suffix from gemini → injected default → medium
@@ -253,7 +254,7 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			includeThoughts: "",
 			expectErr:       false,
 		},
-		// Case 17A: auto → medium → clamped to low when low/high are equally close
+		// Case 17A: auto passes through for a restricted model.
 		{
 			name:        "17A",
 			from:        "openai",
@@ -261,7 +262,7 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			model:       "level-subset-model(auto)",
 			inputJSON:   `{"model":"level-subset-model(auto)","messages":[{"role":"user","content":"hi"}]}`,
 			expectField: "reasoning.effort",
-			expectValue: "low",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 
@@ -408,7 +409,7 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			includeThoughts: "",
 			expectErr:       false,
 		},
-		// Case 30: Effort xhigh → clamped to high
+		// Case 30: Effort xhigh passes through.
 		{
 			name:            "30",
 			from:            "openai",
@@ -416,7 +417,7 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			model:           "gemini-mixed-model(xhigh)",
 			inputJSON:       `{"model":"gemini-mixed-model(xhigh)","messages":[{"role":"user","content":"hi"}]}`,
 			expectField:     "generationConfig.thinkingConfig.thinkingLevel",
-			expectValue:     "high",
+			expectValue:     "xhigh",
 			includeThoughts: "",
 			expectErr:       false,
 		},
@@ -987,15 +988,16 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			expectValue: "high",
 			expectErr:   false,
 		},
-		// Case 81: OpenAI to OpenAI, level xhigh → out of range error
+		// Case 81: OpenAI to OpenAI passes xhigh through.
 		{
 			name:        "81",
 			from:        "openai",
 			to:          "openai",
 			model:       "level-model(xhigh)",
 			inputJSON:   `{"model":"level-model(xhigh)","messages":[{"role":"user","content":"hi"}]}`,
-			expectField: "",
-			expectErr:   true,
+			expectField: "reasoning_effort",
+			expectValue: "xhigh",
+			expectErr:   false,
 		},
 		// Case 82: OpenAI-Response to Codex, level high → passthrough reasoning.effort
 		{
@@ -1008,15 +1010,16 @@ func TestThinkingE2EMatrix_Suffix(t *testing.T) {
 			expectValue: "high",
 			expectErr:   false,
 		},
-		// Case 83: OpenAI-Response to Codex, level xhigh → out of range error
+		// Case 83: Responses to Codex passes xhigh through.
 		{
 			name:        "83",
 			from:        "openai-response",
 			to:          "codex",
 			model:       "level-model(xhigh)",
 			inputJSON:   `{"model":"level-model(xhigh)","input":[{"role":"user","content":"hi"}]}`,
-			expectField: "",
-			expectErr:   true,
+			expectField: "reasoning.effort",
+			expectValue: "xhigh",
+			expectErr:   false,
 		},
 		// Case 84: Gemini to Gemini, budget 8192 → passthrough thinkingBudget
 		{
@@ -1127,15 +1130,16 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			expectValue: "medium",
 			expectErr:   false,
 		},
-		// Case 3: reasoning_effort=xhigh → out of range error
+		// Case 3: reasoning_effort=xhigh passes through.
 		{
 			name:        "3",
 			from:        "openai",
 			to:          "codex",
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"xhigh"}`,
-			expectField: "",
-			expectErr:   true,
+			expectField: "reasoning.effort",
+			expectValue: "xhigh",
+			expectErr:   false,
 		},
 		// Case 4: reasoning_effort=none → clamped to minimal
 		{
@@ -1145,7 +1149,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"none"}`,
 			expectField: "reasoning.effort",
-			expectValue: "minimal",
+			expectValue: "none",
 			expectErr:   false,
 		},
 		// Case 5: reasoning_effort=auto → medium (DynamicAllowed=false)
@@ -1156,7 +1160,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"auto"}`,
 			expectField: "reasoning.effort",
-			expectValue: "medium",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 		// Case 6: No param from gemini → injected default → medium
@@ -1189,7 +1193,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":64000}}}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 			expectErr:   false,
 		},
 		// Case 9: thinkingBudget=0 → clamped to minimal
@@ -1200,7 +1204,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":0}}}`,
 			expectField: "reasoning.effort",
-			expectValue: "minimal",
+			expectValue: "none",
 			expectErr:   false,
 		},
 		// Case 10: thinkingBudget=-1 → medium (DynamicAllowed=false)
@@ -1211,7 +1215,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":-1}}}`,
 			expectField: "reasoning.effort",
-			expectValue: "medium",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 		// Case 11: Claude no param → passthrough (no thinking)
@@ -1243,7 +1247,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":64000}}`,
 			expectField: "reasoning_effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 			expectErr:   false,
 		},
 		// Case 14: thinking.budget_tokens=0 → clamped to minimal
@@ -1254,7 +1258,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":0}}`,
 			expectField: "reasoning_effort",
-			expectValue: "minimal",
+			expectValue: "none",
 			expectErr:   false,
 		},
 		// Case 15: thinking.budget_tokens=-1 → medium (DynamicAllowed=false)
@@ -1265,7 +1269,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":-1}}`,
 			expectField: "reasoning_effort",
-			expectValue: "medium",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 
@@ -1279,7 +1283,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:       "level-subset-model",
 			inputJSON:   `{"model":"level-subset-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":8192}}}`,
 			expectField: "reasoning_effort",
-			expectValue: "low",
+			expectValue: "medium",
 			expectErr:   false,
 		},
 		// Case 17: thinking.budget_tokens=1 → minimal → clamped to low
@@ -1438,7 +1442,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			includeThoughts: "true",
 			expectErr:       false,
 		},
-		// Case 30: reasoning_effort=xhigh → clamped to high
+		// Case 30: reasoning_effort=xhigh passes through.
 		{
 			name:            "30",
 			from:            "openai",
@@ -1446,7 +1450,7 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			model:           "gemini-mixed-model",
 			inputJSON:       `{"model":"gemini-mixed-model","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"xhigh"}`,
 			expectField:     "generationConfig.thinkingConfig.thinkingLevel",
-			expectValue:     "high",
+			expectValue:     "xhigh",
 			includeThoughts: "true",
 			expectErr:       false,
 		},
@@ -1823,7 +1827,8 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":8192}}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "medium",
 			expectErr:   false,
 		},
 		// Case 60: thinkingBudget=0 → stripped
@@ -1833,7 +1838,8 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":0}}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "none",
 			expectErr:   false,
 		},
 		// Case 61: thinkingBudget=-1 → stripped
@@ -1843,7 +1849,8 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":-1}}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 		// Case 62: Claude no param → passthrough
@@ -1863,7 +1870,8 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":8192}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "medium",
 			expectErr:   false,
 		},
 		// Case 64: thinking.budget_tokens=0 → stripped
@@ -1873,7 +1881,8 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":0}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "none",
 			expectErr:   false,
 		},
 		// Case 65: thinking.budget_tokens=-1 → stripped
@@ -1883,7 +1892,8 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":-1}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "auto",
 			expectErr:   false,
 		},
 
@@ -2058,15 +2068,16 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			expectValue: "high",
 			expectErr:   false,
 		},
-		// Case 81: OpenAI to OpenAI, reasoning_effort=xhigh → out of range error
+		// Case 81: OpenAI passes xhigh through.
 		{
 			name:        "81",
 			from:        "openai",
 			to:          "openai",
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"xhigh"}`,
-			expectField: "",
-			expectErr:   true,
+			expectField: "reasoning_effort",
+			expectValue: "xhigh",
+			expectErr:   false,
 		},
 		// Case 82: OpenAI-Response to Codex, reasoning.effort=high → passthrough
 		{
@@ -2079,15 +2090,16 @@ func TestThinkingE2EMatrix_Body(t *testing.T) {
 			expectValue: "high",
 			expectErr:   false,
 		},
-		// Case 83: OpenAI-Response to Codex, reasoning.effort=xhigh → out of range error
+		// Case 83: Responses to Codex passes xhigh through.
 		{
 			name:        "83",
 			from:        "openai-response",
 			to:          "codex",
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","input":[{"role":"user","content":"hi"}],"reasoning":{"effort":"xhigh"}}`,
-			expectField: "",
-			expectErr:   true,
+			expectField: "reasoning.effort",
+			expectValue: "xhigh",
+			expectErr:   false,
 		},
 		// Case 84: Gemini to Gemini, thinkingBudget=8192 → passthrough
 		{
@@ -2212,7 +2224,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			expectField:  "thinking.type",
 			expectValue:  "enabled",
 			expectField2: "thinking.effort",
-			expectValue2: "medium",
+			expectValue2: "auto",
 			expectAbsent: []string{"reasoning_effort"},
 		},
 		{
@@ -2222,10 +2234,8 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:        "kimi-tiered-thinking-model(none)",
 			inputJSON:    `{"model":"kimi-tiered-thinking-model(none)","messages":[{"role":"user","content":"hi"}]}`,
 			expectField:  "thinking.type",
-			expectValue:  "enabled",
-			expectField2: "thinking.effort",
-			expectValue2: "low",
-			expectAbsent: []string{"reasoning_effort"},
+			expectValue:  "disabled",
+			expectAbsent: []string{"thinking.effort", "reasoning_effort"},
 		},
 		{
 			name:         "K6",
@@ -2258,7 +2268,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			expectField:  "thinking.type",
 			expectValue:  "enabled",
 			expectField2: "thinking.effort",
-			expectValue2: "high",
+			expectValue2: "xhigh",
 			expectAbsent: []string{"reasoning_effort"},
 		},
 		{
@@ -2290,10 +2300,8 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:        "kimi-tiered-thinking-model",
 			inputJSON:    `{"model":"kimi-tiered-thinking-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"enabled","budget_tokens":0}}`,
 			expectField:  "thinking.type",
-			expectValue:  "enabled",
-			expectField2: "thinking.effort",
-			expectValue2: "low",
-			expectAbsent: []string{"reasoning_effort"},
+			expectValue:  "disabled",
+			expectAbsent: []string{"thinking.effort", "reasoning_effort"},
 		},
 		{
 			name:         "K12",
@@ -2356,7 +2364,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			expectField:  "thinking.type",
 			expectValue:  "enabled",
 			expectField2: "thinking.effort",
-			expectValue2: "medium",
+			expectValue2: "auto",
 			expectAbsent: []string{"reasoning_effort"},
 		},
 
@@ -2377,7 +2385,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "xai-level-model(xhigh)",
 			inputJSON:   `{"model":"xai-level-model(xhigh)","messages":[{"role":"user","content":"hi"}]}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 		},
 		{
 			name:        "X3",
@@ -2386,7 +2394,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "xai-level-model(max)",
 			inputJSON:   `{"model":"xai-level-model(max)","input":[{"role":"user","content":"hi"}]}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "max",
 		},
 		{
 			name:        "X4",
@@ -2413,7 +2421,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "xai-level-model",
 			inputJSON:   `{"model":"xai-level-model","messages":[{"role":"user","content":"hi"}],"reasoning_effort":"xhigh"}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 		},
 		{
 			name:        "X7",
@@ -2422,7 +2430,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "xai-level-model",
 			inputJSON:   `{"model":"xai-level-model","input":[{"role":"user","content":"hi"}],"reasoning":{"effort":"minimal"}}`,
 			expectField: "reasoning.effort",
-			expectValue: "low",
+			expectValue: "minimal",
 		},
 		{
 			name:        "X8",
@@ -2431,7 +2439,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "xai-level-model",
 			inputJSON:   `{"model":"xai-level-model","contents":[{"role":"user","parts":[{"text":"hi"}]}],"generationConfig":{"thinkingConfig":{"thinkingBudget":32768}}}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 		},
 		{
 			name:        "X9",
@@ -2449,7 +2457,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "xai-level-model",
 			inputJSON:   `{"model":"xai-level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"max"}}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "max",
 		},
 
 		// Interactions target: native API uses generation_config.thinking_level and optional thinking_summaries.
@@ -2492,7 +2500,7 @@ func TestThinkingE2EProviderTargets(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","input":"hi","reasoning":{"effort":"none"}}`,
 			expectField: "reasoning_effort",
-			expectValue: "minimal",
+			expectValue: "none",
 		},
 		{
 			name:         "R3",
@@ -3050,7 +3058,7 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"xhigh"}}`,
 			expectField: "reasoning_effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 			expectErr:   false,
 		},
 		{
@@ -3060,7 +3068,7 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"max"}}`,
 			expectField: "reasoning_effort",
-			expectValue: "high",
+			expectValue: "max",
 			expectErr:   false,
 		},
 		{
@@ -3069,7 +3077,8 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			to:          "openai",
 			model:       "no-thinking-model",
 			inputJSON:   `{"model":"no-thinking-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"high"}}`,
-			expectField: "",
+			expectField: "reasoning_effort",
+			expectValue: "high",
 			expectErr:   false,
 		},
 
@@ -3177,7 +3186,7 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"xhigh"}}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "xhigh",
 			expectErr:   false,
 		},
 		{
@@ -3187,7 +3196,7 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			model:       "level-model",
 			inputJSON:   `{"model":"level-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"max"}}`,
 			expectField: "reasoning.effort",
-			expectValue: "high",
+			expectValue: "max",
 			expectErr:   false,
 		},
 		{
@@ -3227,12 +3236,13 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			expectErr:    false,
 		},
 		{
-			name:      "C22",
-			from:      "claude",
-			to:        "claude",
-			model:     "claude-opus-4-6-model",
-			inputJSON: `{"model":"claude-opus-4-6-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"xhigh"}}`,
-			expectErr: true,
+			name:        "C22",
+			from:        "claude",
+			to:          "claude",
+			model:       "claude-opus-4-6-model",
+			inputJSON:   `{"model":"claude-opus-4-6-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"xhigh"}}`,
+			expectField: "output_config.effort",
+			expectValue: "xhigh",
 		},
 		{
 			name:         "C23",
@@ -3247,20 +3257,22 @@ func TestThinkingE2EClaudeAdaptive_Body(t *testing.T) {
 			expectErr:    false,
 		},
 		{
-			name:      "C24",
-			from:      "claude",
-			to:        "claude",
-			model:     "claude-sonnet-4-6-model",
-			inputJSON: `{"model":"claude-sonnet-4-6-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"max"}}`,
-			expectErr: true,
+			name:        "C24",
+			from:        "claude",
+			to:          "claude",
+			model:       "claude-sonnet-4-6-model",
+			inputJSON:   `{"model":"claude-sonnet-4-6-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"max"}}`,
+			expectField: "output_config.effort",
+			expectValue: "max",
 		},
 		{
-			name:      "C25",
-			from:      "claude",
-			to:        "claude",
-			model:     "claude-sonnet-4-6-model",
-			inputJSON: `{"model":"claude-sonnet-4-6-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"xhigh"}}`,
-			expectErr: true,
+			name:        "C25",
+			from:        "claude",
+			to:          "claude",
+			model:       "claude-sonnet-4-6-model",
+			inputJSON:   `{"model":"claude-sonnet-4-6-model","messages":[{"role":"user","content":"hi"}],"thinking":{"type":"adaptive"},"output_config":{"effort":"xhigh"}}`,
+			expectField: "output_config.effort",
+			expectValue: "xhigh",
 		},
 	}
 

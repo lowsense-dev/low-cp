@@ -210,11 +210,12 @@ func TestApplyConfigurationUpdateRouting(t *testing.T) {
 			wantSame:   true,
 		},
 		{
-			name:       "supported native suffix still strips effort without thinking metadata",
+			name:       "supported native suffix preserves effort without thinking metadata",
 			body:       `{"reasoning":{"effort":"xhigh","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"low"}},{"role":"user","content":"ok"}]}`,
 			supported:  true,
 			noThinking: true,
 			suffix:     "high",
+			wantEffort: "high",
 			wantInput:  `[{"type":"configuration_update","reasoning":{"effort":"low"}},{"role":"user","content":"ok"}]`,
 		},
 		{
@@ -263,9 +264,9 @@ func TestApplyConfigurationUpdateRouting(t *testing.T) {
 			noThinking: true, wantInput: `[{"role":"user","content":"ok"}]`,
 		},
 		{
-			name:       "unsupported without thinking support strips effort but keeps summary",
+			name:       "unsupported without thinking support preserves effort and summary",
 			body:       `{"reasoning":{"effort":"xhigh","summary":"auto","other":7},"input":[{"type":"configuration_update","reasoning":{"effort":"low"}},{"role":"user","content":"ok"}]}`,
-			noThinking: true, wantInput: `[{"role":"user","content":"ok"}]`,
+			noThinking: true, wantEffort: "low", wantInput: `[{"role":"user","content":"ok"}]`,
 		},
 		{
 			name:   "unsupported openai-response alias removes updates",
@@ -380,10 +381,9 @@ func TestApplyThinkingLogsNativeResponsesEffectiveEffort(t *testing.T) {
 			wantEffort: "xhigh", wantLevel: thinking.LevelXHigh, wantMode: thinking.ModeLevel,
 		},
 		{
-			name:       "unsupported none uses minimum effort",
+			name:       "none effort is preserved",
 			body:       `{"model":"gpt-6-sol","reasoning":{"effort":"high"},"input":[{"type":"configuration_update","reasoning":{"effort":"none"}}]}`,
-			wantBody:   `{"model":"gpt-6-sol","reasoning":{"effort":"high"},"input":[{"type":"configuration_update","reasoning":{"effort":"low"}}]}`,
-			wantEffort: "low", wantLevel: thinking.LevelLow, wantMode: thinking.ModeLevel, wantBaseline: thinking.LevelHigh,
+			wantEffort: "none", wantMode: thinking.ModeNone, wantBaseline: thinking.LevelHigh,
 		},
 	}
 	for _, tc := range tests {

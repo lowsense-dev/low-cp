@@ -21,23 +21,23 @@ func TestApplyThinkingNativeResponsesValidatesEffort(t *testing.T) {
 				{
 					name: "unsupported baseline uses minimum effort",
 					body: `{"reasoning":{"effort":"none","summary":"auto","other":7},"input":[{"role":"user","content":"hi"}]}`,
-					want: `{"reasoning":{"effort":"low","summary":"auto","other":7},"input":[{"role":"user","content":"hi"}]}`,
+					want: `{"reasoning":{"effort":"none","summary":"auto","other":7},"input":[{"role":"user","content":"hi"}]}`,
 				},
 				{
 					name: "every update is validated without flattening the baseline",
 					body: `{"reasoning":{"effort":"xhigh","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"none","other":7}},{"role":"user","content":"first"},{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"assistant","content":"reply"},{"type":"configuration_update","reasoning":{"effort":"none"}}]}`,
-					want: `{"reasoning":{"effort":"xhigh","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"low","other":7}},{"role":"user","content":"first"},{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"assistant","content":"reply"},{"type":"configuration_update","reasoning":{"effort":"low"}}]}`,
+					want: `{"reasoning":{"effort":"xhigh","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"none","other":7}},{"role":"user","content":"first"},{"type":"configuration_update","reasoning":{"effort":"high"}},{"role":"assistant","content":"reply"},{"type":"configuration_update","reasoning":{"effort":"none"}}]}`,
 				},
 				{
 					name: "update does not invent a baseline",
 					body: `{"input":[{"type":"configuration_update","reasoning":{"effort":"none"}},{"role":"user","content":"hi"}]}`,
-					want: `{"input":[{"type":"configuration_update","reasoning":{"effort":"low"}},{"role":"user","content":"hi"}]}`,
+					want: `{"input":[{"type":"configuration_update","reasoning":{"effort":"none"}},{"role":"user","content":"hi"}]}`,
 				},
 				{
 					name:   "suffix overrides baseline but updates are still validated",
 					suffix: "(high)",
 					body:   `{"reasoning":{"effort":"invalid","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"none"}}]}`,
-					want:   `{"reasoning":{"effort":"high","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"low"}}]}`,
+					want:   `{"reasoning":{"effort":"high","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"none"}}]}`,
 				},
 				{
 					name:   "invalid suffix does not bypass effort validation",
@@ -48,7 +48,7 @@ func TestApplyThinkingNativeResponsesValidatesEffort(t *testing.T) {
 				{
 					name: "auto uses the existing model fallback",
 					body: `{"reasoning":{"effort":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"auto"}}]}`,
-					want: `{"reasoning":{"effort":"medium"},"input":[{"type":"configuration_update","reasoning":{"effort":"medium"}}]}`,
+					want: `{"reasoning":{"effort":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"auto"}}]}`,
 				},
 				{
 					name: "supported efforts remain byte identical",
@@ -123,7 +123,7 @@ func TestApplyThinkingNativeResponsesRespectsModelCapabilities(t *testing.T) {
 		{
 			name:     "configured model uses its lowest level rather than a hardcoded low",
 			thinking: &registry.ThinkingSupport{Levels: []string{"high", "medium"}},
-			want:     `{"reasoning":{"effort":"medium","summary":"auto"},"input":[{"type":"configuration_update","reasoning":{"effort":"medium"}}]}`,
+			want:     body,
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -296,6 +296,33 @@ func applyThinkingDocCore(doc *ojson.Doc, docValid bool, sourceBody []byte, mode
 			}
 		}
 	}
+	// Effort levels are chosen by the client; leave support decisions to upstream.
+	if modelInfo != nil {
+		intent := sourceConfig
+		if suffixResult.HasSuffix {
+			intent = parseSuffixToConfig(suffixResult.RawSuffix, providerFormat, model)
+		} else if !hasThinkingConfig(intent) {
+			if len(sourceBody) > 0 {
+				intent = extractSourceThinkingConfig(sourceBody, fromFormat)
+			}
+			if !hasThinkingConfig(intent) {
+				intent = extractThinkingConfigDoc(doc, docValid, providerFormat)
+			}
+		}
+		explicitEffort := intent.Mode == ModeLevel || (!suffixResult.HasSuffix && (hasExplicitEffort(doc.Get) || (len(sourceBody) > 0 && hasExplicitEffort(func(path string) ojson.Result { return ojson.GetBytes(sourceBody, path) }))))
+		if suffixResult.HasSuffix && (strings.EqualFold(suffixResult.RawSuffix, "none") || strings.EqualFold(suffixResult.RawSuffix, "auto")) {
+			explicitEffort = true
+		}
+		// Budget-based protocols need their native representation for none/auto.
+		levelProtocol := providerFormat == "openai" || providerFormat == "codex" || providerFormat == "xai" || providerFormat == "kimi" || providerFormat == "kimi-ai" || providerFormat == "kimi.ai" || providerFormat == "kimi.com"
+		budgetOnly := !levelProtocol && detectModelCapability(modelInfo) == CapabilityBudgetOnly
+		if hasThinkingConfig(intent) && explicitEffort && !budgetOnly && (intent.Mode == ModeLevel || (levelProtocol && intent.Mode != ModeBudget)) {
+			copy := *modelInfo
+			copy.UserDefined = true
+			modelInfo = &copy
+			sourceConfig = intent
+		}
+	}
 	responseTarget := providerFormat == "codex" || providerFormat == "xai"
 	supportsUpdates := modelInfo != nil && modelInfo.SupportConfigurationUpdate
 	if responseTarget && !supportsUpdates {
@@ -491,6 +518,15 @@ func applyThinkingDocCore(doc *ojson.Doc, docValid bool, sourceBody []byte, mode
 		modified = true
 	}
 	return modified, nil
+}
+
+func hasExplicitEffort(get func(string) ojson.Result) bool {
+	for _, path := range []string{"reasoning_effort", "reasoning.effort", "output_config.effort", "thinking.effort", "generationConfig.thinkingConfig.thinkingLevel", "generationConfig.thinkingConfig.thinking_level", "request.generationConfig.thinkingConfig.thinkingLevel", "generationConfig.thinkingLevel"} {
+		if value := get(path); value.Type == ojson.String && strings.TrimSpace(value.String()) != "" {
+			return true
+		}
+	}
+	return hasThinkingConfig(extractConfigurationUpdateConfigFromInput(get("input")))
 }
 
 func invokeProviderApplierOnDoc(applier ProviderApplier, doc *ojson.Doc, docValid *bool, config ThinkingConfig, modelInfo *registry.ModelInfo) (bool, error) {
