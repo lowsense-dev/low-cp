@@ -16,6 +16,9 @@ import (
 // ModelsRefreshInterval is the shared cadence for model catalogs and account entitlements.
 const ModelsRefreshInterval = 3 * time.Hour
 
+// ModelCatalogRefreshInterval is how often the remote model catalogs are re-fetched.
+const ModelCatalogRefreshInterval = 15 * time.Minute
+
 var modelsURLs = []string{
 	"https://raw.githubusercontent.com/router-for-me/models/refs/heads/main/models.json",
 	"https://models.router-for.me/models.json",
@@ -67,7 +70,7 @@ func init() {
 }
 
 // StartModelsUpdater starts a background updater that fetches models
-// immediately on startup and then refreshes the model catalog every 3 hours.
+// immediately on startup and then refreshes the model catalog every 15 minutes.
 // Safe to call multiple times; only one updater will run.
 func StartModelsUpdater(ctx context.Context) {
 	generalCatalogUpdater.configure(ctx, "")
